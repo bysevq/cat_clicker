@@ -58,10 +58,16 @@
   }
   .hud-right {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
-    align-items: flex-end;
+    align-items: center;
     pointer-events: none;
+  }
+  @media (min-width: 768px) {
+    .hud-right {
+      flex-direction: column;
+      align-items: flex-end;
+    }
   }
   .pill {
     pointer-events: auto;
@@ -483,17 +489,20 @@
   #gameUI { display: none; }
   #gameUI.visible { display: block; }
 
+  @media (max-width: 767px) {
+    #catWrap { width: 46vmin; height: 46vmin; max-width: 300px; max-height: 300px; }
+  }
   @media (max-width: 420px) {
     .pill { font-size: 12px; padding: 7px 12px; }
     .level-pill .num { font-size: 16px; }
-    #catWrap { width: 42vmin; height: 42vmin; }
+    #catWrap { width: 48vmin; height: 48vmin; }
     .inv-slot, #invOpenBtn { width: 58px; height: 58px; }
     .start-panel h1 { font-size: 22px; }
     #invModalGrid { gap: 8px; }
     .inv-item span { font-size: 10px; }
   }
   @media (max-height: 500px) {
-    #catWrap { width: 28vmin; height: 28vmin; }
+    #catWrap { width: 32vmin; height: 32vmin; }
     #progressWrap { top: calc(48px + env(safe-area-inset-top)); }
     #catNameTagWrap { display: none; }
     .inv-slot, #invOpenBtn { width: 48px; height: 48px; }
@@ -797,6 +806,8 @@
   var catHalf = 0;
   var cachedW = 0, cachedH = 0;
   var movementPaused = false;
+  // На мобильных чуть быстрее, чтобы ощущение было как на ПК
+  var moveSpeed = (window.matchMedia && window.matchMedia("(max-width: 767px)").matches) ? 0.15 : 0.11;
 
   function animateMovement(ts) {
     if (!state.started || movementPaused) {
@@ -806,7 +817,7 @@
     if (lastFrame === null) lastFrame = ts;
     var dt = Math.min((ts - lastFrame) / 1000, 0.05);
     lastFrame = ts;
-    moveT += dt * 0.11;
+    moveT += dt * moveSpeed;
 
     var areaW = el.playArea.clientWidth;
     var areaH = el.playArea.clientHeight;
@@ -1245,35 +1256,44 @@
     e.preventDefault();
   });
 
-  // Пробел
-  document.addEventListener("keydown", function (e) {
-    if (e.code === "Space" || e.key === " ") {
-      e.preventDefault();
-      if (!state.started) {
-        startGame();
-        return;
+  // Пробел — только на тач-устройствах (на ПК оставляем только ЛКМ и ПКМ)
+  var isTouchDevice = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+  if (isTouchDevice) {
+    document.addEventListener("keydown", function (e) {
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        if (!state.started) {
+          startGame();
+          return;
+        }
+        if (isLocked) return;
+        var rect = el.catButton.getBoundingClientRect();
+        doClick(rect.left + rect.width / 2, rect.top + rect.height / 2);
       }
-      if (isLocked) return;
-      var rect = el.catButton.getBoundingClientRect();
-      doClick(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    }
-  });
+    });
+  }
 
   // Disable gesture zoom / selection
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
   document.addEventListener("selectstart", function (e) { e.preventDefault(); });
 
   // Handle resize / orientation change
+  function refreshMoveSpeed() {
+    moveSpeed = (window.matchMedia && window.matchMedia("(max-width: 767px)").matches) ? 0.15 : 0.11;
+  }
   window.addEventListener("resize", function () {
     cachedW = 0;
     cachedH = 0;
+    refreshMoveSpeed();
   });
   window.addEventListener("orientationchange", function () {
     cachedW = 0;
     cachedH = 0;
+    refreshMoveSpeed();
     setTimeout(function () {
       cachedW = 0;
       cachedH = 0;
+      refreshMoveSpeed();
     }, 300);
   });
 
